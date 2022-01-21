@@ -2,62 +2,56 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.express as px
+from fit import *
 import os
 
-# INITIAL PARAMETERS
-id_case = 1
+# PLOT PARAMETERS
 plot = True
 
-# FILES MANAGEMENT
-file = list()
+# BAR PARAMETERS
+d_bar = 10e-3  # Diametro barra
+A_bar = (d_bar / 2) ** 2 * np.pi  # Area barra
+E_bar = 1.928e11 # Modulo elastico in Pa
+rho_bar = 7.9e3  # kg/m3
+
+# SAMPLE PARAMETERS
+d_sample = 3e-3  # Diametro provino
+L_sample = 5e-2  # Lunghezza provino
+A_sample = (d_sample / 2) ** 2 * np.pi  # Area provino
+E_sample = 2e11  # Modulo elastico in Pa
+rho_sample = 8.17e3  # kg/m3
+Co_sample = np.sqrt(E_sample / rho_sample)  # Velocità del suono nel provino in m/s
+
 # RAW DATA
-file.append(r'\FullData\Inc718-Cast_001 - 200 s-1 - 20C\Cast-200-20C-001-in-out-signals.txt')
-file.append(r'\FullData\Inc718-Cast_007 - 800 s-1 - 20C\Cast-800-20C-007-in-out-signals.txt')
+file = list()
+file.append(r'\Data\Inconel 718\Inc718-Cast_050 - Statica - 20C\Inc718-Cast_50.txt')
+file.append(r'\Data\Inconel 718\Inc718-Cast_001 - 200 s-1 - 20C\Cast-200-20C-001-in-out-signals.txt')
+file.append(r'\Data\Inconel 718\Inc718-Cast_007 - 800 s-1 - 20C\Cast-800-20C-007-in-out-signals.txt')
 
-# PROCESSED DATA
-file.append(r'\FullData\Inc718-Cast_050 - Statica - 20C\Inc718-Cast_50.txt')
-file.append(r'\FullData\Inc718-Cast_001 - 200 s-1 - 20C\Cast-200-20C-001-all_data.txt')
-file.append(r'\FullData\Inc718-Cast_002 - 200 s-1 - 20C\Cast-200-20C-002-all_data.txt')
-file.append(r'\FullData\Inc718-Cast_005 - 800 s-1 - 20C\Cast-800-20C-005-all_data.txt')
-file.append(r'\FullData\Inc718-Cast_007 - 800 s-1 - 20C\Cast-800-20C-007-all_data.txt')
-file.append(r'\FullData\Inc718-Cast_017 - 200 s-1 - 550C\Cast-200-550C-017-all_data.txt')
-file.append(r'\FullData\Inc718-Cast_018 - 200 s-1 - 550C\Cast-200-550C-018-all_data.txt')
-file.append(r'\FullData\Inc718-Cast_020 - 800 s-1 - 550C\Cast-800-550C-020-all_data.txt')
-file.append(r'\FullData\Inc718-Cast_023 - 800 s-1 - 550C\Cast-800-550C-023-all_data.txt')
-
-raw_data = list([True, True, False, False, False, False, False, False, False, False, False])
+# SIGMA DATA (Rp0.2 AND Rm)
+failure_data = list()
+failure_data.append([])  # Case Inc718-Cast_50
+failure_data.append([])  # Case Cast-200-20C-001-in-out-signals
+failure_data.append([])  # Case Cast-800-20C-007-in-out-signals
 
 # FAILURE DATA
 failure_data = list()
+failure_data.append([2.220e-3, 6.490e-3])  # Case Inc718-Cast_50
 failure_data.append([2.416e-3, 5.155e-3])  # Case Cast-200-20C-001-in-out-signals
 failure_data.append([2.292e-3, 5.155e-3])  # Case Cast-800-20C-007-in-out-signals
-failure_data.append([2.220e-3, 6.490e-3])  # Case Inc718-Cast_50
 
 # START AND END IMPULS IDS
 pulse_ids = list()
+pulse_ids.append([0, 0])  # Case Cast-200-20C-001-in-out-signals
 pulse_ids.append([37, 219])  # Case Cast-200-20C-001-in-out-signals
 pulse_ids.append([315, 861])  # Case Cast-800-20C-007-in-out-signals
 
-# DATA READING
-file_path = os.path.dirname(os.path.realpath(__file__)) + file[id_case]
-data_frame = pd.read_csv(file_path, sep="\t", index_col=False)
-
-if raw_data[id_case]:
+# LOOP ON 3 CASES
+for id_case in range(1, 3):
+    # DATA READING
+    file_path = os.path.dirname(os.path.realpath(__file__)) + file[id_case]
+    data_frame = pd.read_csv(file_path, sep="\t", index_col=False)
     column_names = list(data_frame.columns)
-
-    # BAR PARAMETERS
-    d_bar = 10e-3  # Diametro barra
-    A_bar = (d_bar / 2) ** 2 * np.pi  # Area barra
-    E_bar = 1.928e11 # Modulo elastico in Pa
-    rho_bar = 7.9e3  # kg/m3
-
-    # SAMPLE PARAMETERS
-    d_sample = 3e-3  # Diametro provino
-    L_sample = 5e-2  # Lunghezza provino
-    A_sample = (d_sample / 2) ** 2 * np.pi  # Area provino
-    E_sample = 2e11  # Modulo elastico in Pa
-    rho_sample = 8.17e3  # kg/m3
-    Co_sample = np.sqrt(E_sample / rho_sample)  # Velocità del suono nel provino in m/s
 
     # TIME EXTRACTION
     time = data_frame['Time [s]'].values
@@ -112,6 +106,16 @@ if raw_data[id_case]:
     # Correction entire curve
     # sample_strain_corrected = sample_strain - sample_stress * (1 / E_real - 1 / E_sample)
     sample_stress_corrected = sample_stress
+    sample_strain_corrected = np.array(sample_strain_corrected)
+    # Rp0.2 IDENTIFICATION
+    dE = np.diff(sample_stress_corrected/sample_strain_corrected)
+    id_linear_end = np.int(np.where(dE < 0)[0][0])
+    id_linear_start = np.int(np.round(id_linear_end*0.2))
+    E_theoretical = (sample_stress_corrected[id_linear_end] - sample_stress_corrected[id_linear_start]) /\
+                    (sample_strain_corrected[id_linear_end] - sample_strain_corrected[id_linear_start])
+    #theoretical_stain_reconstruct = [0.002] + sample_strain_corrected[sample_strain_corrected > 0.002]
+    theoretical_stress_reconstruct = E_theoretical * (sample_strain_corrected - 0.002)
+    id_Rp02 = np.where(theoretical_stress_reconstruct > sample_stress_corrected)[0][0]
 
     # NECKING IDENTIFICATION
     id_necking = np.argmax(sample_stress_corrected)
@@ -132,59 +136,50 @@ if raw_data[id_case]:
     sample_strain_true = np.log(1 + sample_strain_extended)
     sample_stress_true = (1 + sample_strain_extended) * sample_stress_extended
 
-else:
-    column_names = list(data_frame.columns)
-    # STRESS
-    data_frame['Stress'] = data_frame[column_names[2]]
+    # JOHNSONS-COOK MODEL FITTING
+    # ISOTROPIC HARDENING
+    if id_case == 0:
+        A, B, n = fit_isotropic_hardening()
+    # STRAIN-RATE HARDENING
+    if id_case == 1:
+        C = fit_starin_rate_hardening()
 
-    # STRAIN
-    data_frame['Strain'] = data_frame[column_names[1]]
+    # THERMAL SOFTENING
+    if id_case == 2:
+        m = fit_thermal_softening()
 
-# PLOTS
-if plot and not raw_data[id_case]:
-    # GRAFICO TEMPORALE DELLO STRESS
-    fig = px.line(x=data_frame['Time [s]'], y=data_frame['Stress'], title='Stress')
-    fig.show()
+    # PLOTS
+    if plot:
+        # BAR FORCE TRANSMITTED
+        fig = px.line(x=time, y=bar_force_transmitted, title='Force transmitted')
+        fig.show()
 
-    # GRAFICO TEMPORALE DELLO STRAIN
-    fig = px.line(x=data_frame['Time [s]'], y=data_frame['Strain'], title='Strain')
-    fig.show()
+        # BAR FORCE REFLECTED
+        fig = px.line(x=time, y=bar_force_reflected, title='Force reflected')
+        fig.show()
 
-    # GRAFICO STRESS-STRAIN
-    fig = px.line(x=data_frame['Strain'], y=data_frame['Stress'], title='Stress-Strain')
-    fig.show()
+        # SAMPLE STRESS
+        fig = px.line(x=time, y=sample_stress/1e6, title='Sample Stress')
+        fig.show()
 
-if plot and raw_data[id_case]:
-    # BAR FORCE TRANSMITTED
-    fig = px.line(x=time, y=bar_force_transmitted, title='Force transmitted')
-    fig.show()
+        # SAMPLE STRAIN
+        fig = px.line(x=time, y=sample_strain, title='Sample Strain')
+        fig.show()
 
-    # BAR FORCE REFLECTED
-    fig = px.line(x=time, y=bar_force_reflected, title='Force reflected')
-    fig.show()
+        # SAMPLE STRAIN RATE
+        fig = px.line(x=time, y=sample_strain_rate, title='Sample Strain Rate')
+        fig.show()
 
-    # SAMPLE STRESS
-    fig = px.line(x=time, y=sample_stress/1e6, title='Sample Stress')
-    fig.show()
+        # STRESS-STRAIN ENGINEERING NOT CORRECTED
+        fig = px.line(x=sample_strain, y=sample_stress/1e6, title='Stress-Strain Engineering not corrected')
+        fig.show()
 
-    # SAMPLE STRAIN
-    fig = px.line(x=time, y=sample_strain, title='Sample Strain')
-    fig.show()
+        # STRESS-STRAIN ENGINEERING CORRECTED
+        fig = px.line(x=sample_strain_extended, y=sample_stress_extended/1e6, title='Stress-Strain Engineering corrected')
+        fig.show()
 
-    # SAMPLE STRAIN RATE
-    fig = px.line(x=time, y=sample_strain_rate, title='Sample Strain Rate')
-    fig.show()
+        # STRESS-STRAIN TRUE
+        fig = px.line(x=sample_strain_true, y=sample_stress_true/1e6, title='Stress-Strain True')
+        fig.show()
 
-    # STRESS-STRAIN ENGINEERING NOT CORRECTED
-    fig = px.line(x=sample_strain, y=sample_stress/1e6, title='Stress-Strain Engineering not corrected')
-    fig.show()
-
-    # STRESS-STRAIN ENGINEERING CORRECTED
-    fig = px.line(x=sample_strain_extended, y=sample_stress_extended/1e6, title='Stress-Strain Engineering corrected')
-    fig.show()
-
-    # STRESS-STRAIN TRUE
-    fig = px.line(x=sample_strain_true, y=sample_stress_true/1e6, title='Stress-Strain True')
-    fig.show()
-
-a = 1
+    a = 1
