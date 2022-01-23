@@ -39,14 +39,14 @@ def plot_data(time, bar, sample):
 
     # STRESS-STRAIN ENGINEERING NOT CORRECTED
     try:
-        fig = px.line(x=sample['strain'], y=sample['stress']/1e6, title='Stress-Strain Engineering not corrected')
+        fig = px.line(x=sample['strain'], y=sample['stress'], title='Stress-Strain Engineering not corrected')
         fig.show()
     except:
         pass
 
     # STRESS-STRAIN ENGINEERING CORRECTED
     try:
-        fig = px.line(x=sample['strain extended'], y=sample['stress extended']/1e6, title='Stress-Strain Engineering corrected')
+        fig = px.line(x=sample['strain extended'], y=sample['stress extended'], title='Stress-Strain Engineering corrected')
         fig.show()
     except:
         pass

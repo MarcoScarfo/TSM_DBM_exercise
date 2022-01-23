@@ -5,8 +5,9 @@ from fit import *
 import os
 
 # SYSTEM PARAMETERS
-plot = True
+plot = False
 model = dict()
+cases = list()
 
 # BAR PARAMETERS
 bar = dict()
@@ -94,9 +95,9 @@ for id_case in range(0, 4):
     sample['strain corrected'] = list()
     for i in range(sample['strain'].shape[0]):
         if sample['strain'][i] <= real['epsilon']:
-            sample['strain corrected'].append(sample['strain'][i] - sample['stress'][i] * (1/real['E'] - 1/sample['E']))
+            sample['strain corrected'].append(sample['strain'][i] - sample['stress'][i] * (1/real['E'] - 1/sample['E']) * 1e6)
         else:
-            sample['strain corrected'].append(sample['strain'][i] - real['sigma'] * (1 / real['E'] - 1 / sample['E']))
+            sample['strain corrected'].append(sample['strain'][i] - real['sigma'] * (1 / real['E'] - 1 / sample['E']) * 1e6)
 
     # Correction entire curve
     sample['stress corrected'] = sample['stress']
@@ -115,10 +116,16 @@ for id_case in range(0, 4):
     sample['stress no necking'] = sample['stress corrected'][:sample['id_Rm']]
     sample['strain no necking'] = sample['strain corrected'][:sample['id_Rm']]
 
+    # TRUE CURVES CORRECTION
+    sample['strain true'] = np.log(1 + sample['strain corrected'])
+    sample['stress true'] = (1 + sample['strain corrected']) * sample['stress corrected']
+    sample['stress true no necking'] = sample['stress true'][:sample['id_Rm']]
+    sample['strain true no necking'] = sample['strain true'][:sample['id_Rm']]
+
     # FRACTURE VALUES
     if (id_case == 0) or (id_case == 3):
-        sample['stress extended'] = sample['stress corrected']
-        sample['strain extended'] = sample['strain corrected']
+        sample['stress extended'] = sample['stress true']
+        sample['strain extended'] = sample['strain true']
     else:
         a = fracture_data[id_case][0]/2
         R = fracture_data[id_case][1]
@@ -126,12 +133,8 @@ for id_case in range(0, 4):
         sample['average sigma'] = bar['force reflected'][-1] / (np.pi * a**2)
         sample['stress fracture'] = sample['average sigma']/((1 + 2*R/a) * np.log(1 + a/(2*R))) / 1e6
         sample['strain fracture'] = 2 * np.log(sample['d'] / (2 * a))
-        sample['stress extended'] = np.append(sample['stress no necking'], [sample['stress fracture']])
-        sample['strain extended'] = np.append(sample['strain no necking'], [sample['strain fracture']])
-
-    # TRUE CURVES CORRECTION
-    sample['strain true'] = np.log(1 + sample['strain extended'])
-    sample['stress true'] = (1 + sample['strain extended']) * sample['stress extended']
+        sample['stress extended'] = np.append(sample['stress true no necking'], [sample['stress fracture']])
+        sample['strain extended'] = np.append(sample['strain true no necking'], [sample['strain fracture']])
 
     # JOHNSON-COOK MODEL FITTING
     # ISOTROPIC HARDENING
@@ -149,6 +152,16 @@ for id_case in range(0, 4):
     # PLOTS
     if plot:
         plot_data(time, bar, sample)
+
+    store = dict()
+    store['strain corrected'] = sample['strain corrected']
+    store['stress corrected'] = sample['stress corrected']
+    store['strain true'] = sample['strain true']
+    store['stress true'] = sample['stress true']
+    store['strain extended'] = sample['strain extended']
+    store['stress extended'] = sample['stress extended']
+
+    cases.append(store)
 
 print("The Jonshon-Cook model fits the data with the following parameters:")
 print("A: {}".format(model['A']))

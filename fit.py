@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
+import plotly.graph_objects as go
 
 def fit_isotropic_hardening(sample, model):
     # SAMPLE CURVE EXTRACTION
@@ -33,11 +33,18 @@ def fit_isotropic_hardening(sample, model):
     sigma_fitted_optimal = model['A'] + model['B']*epsilon**model['n']
 
     # PLOT OPTIMAL CASE
-    plt.Figure()
-    plt.plot(epsilon, sigma)
-    plt.plot(epsilon, sigma_fitted_optimal)
-    plt.title("isotropic hardening fitting")
-    plt.show()
+    # plt.Figure()
+    # plt.plot(epsilon, sigma)
+    # plt.plot(epsilon, sigma_fitted_optimal)
+    # plt.title("isotropic hardening fitting")
+    # plt.show()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(name='experimental data', x=epsilon, y=sigma, mode="lines",
+                             line=go.scatter.Line(color="blue"), showlegend=True))
+    fig.add_trace(go.Scatter(name='modelled data', x=epsilon, y=sigma_fitted_optimal, mode="lines",
+                             line=go.scatter.Line(color="orange"), showlegend=True))
+    fig.update_layout(title="Isotropic hardening")
+    fig.show()
     return model
 
 
@@ -67,11 +74,18 @@ def fit_strain_rate_hardening(sample, model, measure):
     sigma_fitted_optimal = isotropic_hardening * (1 + model['C']*np.log(d_epsilon/d_epsilon_0))
 
     # PLOT OPTIMAL CASE
-    plt.Figure()
-    plt.plot(epsilon, sigma)
-    plt.plot(epsilon, sigma_fitted_optimal)
-    plt.title("strain-rate hardening fitting")
-    plt.show()
+    # plt.Figure()
+    # plt.plot(epsilon, sigma)
+    # plt.plot(epsilon, sigma_fitted_optimal)
+    # plt.title("strain-rate hardening fitting")
+    # plt.show()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(name='experimental data', x=epsilon, y=sigma, mode="lines",
+                             line=go.scatter.Line(color="blue"), showlegend=True))
+    fig.add_trace(go.Scatter(name='modelled data', x=epsilon, y=sigma_fitted_optimal, mode="lines",
+                             line=go.scatter.Line(color="orange"), showlegend=True))
+    fig.update_layout(title="Strain-rate hardening")
+    fig.show()
     return model
 
 
@@ -113,9 +127,16 @@ def fit_thermal_softening(sample, model, measure):
     sigma_fitted_optimal = isotropic_hardening * strain_rate_hardening * (1 - T_hat**model['m'])
 
     # PLOT OPTIMAL CASE
-    plt.Figure()
-    plt.plot(epsilon, sigma)
-    plt.plot(epsilon, sigma_fitted_optimal)
-    plt.title("Thermal softening fitting")
-    plt.show()
+    # plt.Figure()
+    # plt.plot(epsilon, sigma)
+    # plt.plot(epsilon, sigma_fitted_optimal)
+    # plt.title("Thermal softening fitting")
+    # plt.show()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(name='experimental data', x=epsilon, y=sigma, mode="lines",
+                             line=go.scatter.Line(color="blue"), showlegend=True))
+    fig.add_trace(go.Scatter(name='modelled data', x=epsilon, y=sigma_fitted_optimal, mode="lines",
+                             line=go.scatter.Line(color="orange"), showlegend=True))
+    fig.update_layout(title="Thermal softening")
+    fig.show()
     return model
